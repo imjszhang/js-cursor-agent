@@ -1,0 +1,11 @@
+{
+  "name": "js-cursor-agent",
+  "version": "1.0.0",
+  "description": "OpenClaw plugin — Cursor CLI ACP runtime backend",
+  "type": "module",
+  "main": "index.mjs",
+  "license": "MIT",
+  "openclaw": {
+    "extensions": ["./index.mjs"]
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "js-cursor-agent",
+  "name": "JS Cursor Agent",
+  "description": "Cursor CLI ACP runtime backend — manages long-lived Cursor agent acp processes with session pooling, permission auto-approval, and idle reclaim.",
+  "version": "1.0.0",
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "Path to the Cursor CLI agent command (default: agent)"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "Cursor API key"
+      },
+      "authToken": {
+        "type": "string",
+        "description": "Cursor auth token"
+      },
+      "endpoint": {
+        "type": "string",
+        "description": "Cursor API endpoint"
+      },
+      "defaultMode": {
+        "type": "string",
+        "enum": ["agent", "plan", "ask"],
+        "description": "Default session mode"
+      },
+      "permissionMode": {
+        "type": "string",
+        "enum": ["approve-all", "approve-reads", "deny-all"],
+        "description": "Permission auto-approval policy"
+      },
+      "idleTtlMinutes": {
+        "type": "number",
+        "description": "Idle process reclaim timeout in minutes"
+      },
+      "maxConcurrentSessions": {
+        "type": "number",
+        "description": "Max concurrent Cursor agent processes"
+      }
+    }
+  },
+  "uiHints": {
+    "command": {
+      "label": "Cursor Agent Command",
+      "help": "Path/command for the Cursor CLI agent binary. Leave empty to use 'agent' from PATH.",
+      "placeholder": "agent"
+    },
+    "apiKey": {
+      "label": "Cursor API Key",
+      "help": "Cursor API key for authentication.",
+      "secret": true
+    },
+    "authToken": {
+      "label": "Cursor Auth Token",
+      "help": "Cursor auth token (alternative to API key).",
+      "secret": true
+    },
+    "endpoint": {
+      "label": "API Endpoint",
+      "help": "Custom Cursor API endpoint (optional).",
+      "advanced": true
+    },
+    "defaultMode": {
+      "label": "Default Mode",
+      "help": "Session mode: agent (full), plan (read-only planning), ask (questions only)."
+    },
+    "permissionMode": {
+      "label": "Permission Policy",
+      "help": "How to auto-respond to Cursor tool permission requests."
+    },
+    "idleTtlMinutes": {
+      "label": "Idle TTL (min)",
+      "help": "Kill idle Cursor processes after this many minutes.",
+      "advanced": true
+    },
+    "maxConcurrentSessions": {
+      "label": "Max Concurrent Sessions",
+      "help": "Maximum number of concurrent Cursor agent processes.",
+      "advanced": true
+    }
+  }
+}

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>js-cursor-agent — Status Panel</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e4e6ef;
+      --text-muted: #8b8fa3;
+      --accent: #6c5ce7;
+      --accent-soft: rgba(108, 92, 231, 0.15);
+      --green: #00b894;
+      --green-soft: rgba(0, 184, 148, 0.15);
+      --red: #e17055;
+      --red-soft: rgba(225, 112, 85, 0.15);
+      --yellow: #fdcb6e;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      font-family: var(--mono);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    h1 span {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .status-dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+
+    .status-label { flex: 1; }
+    .status-value { color: var(--text-muted); font-family: var(--mono); font-size: 13px; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--mono);
+    }
+
+    .badge-green { background: var(--green-soft); color: var(--green); }
+    .badge-red { background: var(--red-soft); color: var(--red); }
+    .badge-accent { background: var(--accent-soft); color: var(--accent); }
+
+    .sessions-empty {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 32px 0;
+    }
+
+    .session-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .session-key {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .session-meta {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .refresh-btn {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .refresh-btn:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .config-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+
+    .config-key { color: var(--text-muted); font-size: 13px; }
+    .config-val { font-family: var(--mono); font-size: 13px; }
+
+    footer {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">CA</div>
+      <h1>js-cursor-agent <span>v1.0.0</span></h1>
+    </header>
+
+    <!-- Health -->
+    <div class="card">
+      <div class="card-title">Health</div>
+      <div class="status-row">
+        <div class="status-dot" id="healthDot"></div>
+        <div class="status-label" id="healthLabel">Checking...</div>
+        <span class="badge" id="healthBadge">—</span>
+      </div>
+    </div>
+
+    <!-- Active Sessions -->
+    <div class="card">
+      <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Active Sessions</span>
+        <button class="refresh-btn" onclick="refresh()">Refresh</button>
+      </div>
+      <div id="sessionsContainer">
+        <div class="sessions-empty">No active sessions</div>
+      </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="card">
+      <div class="card-title">Configuration</div>
+      <div class="config-grid" id="configGrid"></div>
+    </div>
+
+    <footer>
+      js-cursor-agent &mdash; Cursor CLI ACP runtime wrapper
+      &middot; <a href="https://github.com/imjszhang/js-cursor-agent" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    const configDefaults = {
+      'Command': 'agent',
+      'Default Mode': 'agent',
+      'Permission Mode': 'approve-all',
+      'Idle TTL': '30 min',
+      'Max Sessions': '4',
+      'Auth': 'Not configured',
+    };
+
+    function renderConfig(data) {
+      const grid = document.getElementById('configGrid');
+      const cfg = data ?? configDefaults;
+      grid.innerHTML = '';
+      for (const [key, val] of Object.entries(cfg)) {
+        grid.innerHTML += `
+          <div class="config-item">
+            <span class="config-key">${key}</span>
+            <span class="config-val">${val}</span>
+          </div>`;
+      }
+    }
+
+    function renderHealth(ok, message) {
+      const dot = document.getElementById('healthDot');
+      const label = document.getElementById('healthLabel');
+      const badge = document.getElementById('healthBadge');
+
+      dot.className = `status-dot ${ok ? 'green' : 'red'}`;
+      label.textContent = message;
+      badge.className = `badge ${ok ? 'badge-green' : 'badge-red'}`;
+      badge.textContent = ok ? 'OK' : 'FAIL';
+    }
+
+    function renderSessions(sessions) {
+      const container = document.getElementById('sessionsContainer');
+      if (!sessions || sessions.length === 0) {
+        container.innerHTML = '<div class="sessions-empty">No active sessions</div>';
+        return;
+      }
+      container.innerHTML = sessions.map((s) => `
+        <div class="session-item">
+          <div class="status-dot ${s.alive ? 'green' : 'red'}"></div>
+          <div class="session-key">${s.sessionKey}</div>
+          <div class="session-meta">
+            ${s.initialized ? '<span class="badge badge-accent">initialized</span>' : ''}
+            ${new Date(s.lastActivity).toLocaleTimeString()}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch(`${API_BASE}/api/status`);
+        if (!res.ok) throw new Error('API unavailable');
+        const data = await res.json();
+        renderHealth(data.health?.ok ?? false, data.health?.message ?? 'Unknown');
+        renderSessions(data.sessions ?? []);
+        if (data.config) renderConfig(data.config);
+      } catch {
+        renderHealth(false, 'Cannot reach API — is the server running?');
+        renderSessions([]);
+        renderConfig(configDefaults);
+      }
+    }
+
+    // Initialize
+    renderConfig(configDefaults);
+    renderHealth(false, 'Loading...');
+    refresh();
+    setInterval(refresh, 10000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "js-cursor-agent",
+  "version": "1.0.0",
+  "description": "Cursor CLI ACP 运行时封装 — 独立 CLI、MCP Server、OpenClaw 插件三种使用方式。",
+  "author": "imjszhang",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "cli": "node cli/cli.js",
+    "mcp": "node mcp-server/index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "dotenv": "^16.4.7"
+  }
+}
