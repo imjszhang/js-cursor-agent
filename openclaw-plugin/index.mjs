@@ -53,7 +53,7 @@ class CursorRuntime {
    * @returns {Promise<object>}  AcpRuntimeHandle
    */
   async ensureSession(input) {
-    const handle = await this.#client.createSession(input.sessionKey, {
+    const handle = await this.#client.getOrCreateSession(input.sessionKey, {
       cwd: input.cwd,
       mode: input.mode === 'persistent' ? undefined : input.mode,
     });

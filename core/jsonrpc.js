@@ -95,6 +95,18 @@ export class JsonRpcTransport {
   }
 
   /**
+   * Remove a previously registered notification handler.
+   * @param {string} method
+   * @param {Function} handler
+   */
+  offNotification(method, handler) {
+    const list = this.#notificationHandlers.get(method);
+    if (!list) return;
+    const idx = list.indexOf(handler);
+    if (idx !== -1) list.splice(idx, 1);
+  }
+
+  /**
    * Register a handler for server-initiated requests (has `id`, expects response).
    * Only one handler per method; last registration wins.
    * The handler return value is sent back as the result.

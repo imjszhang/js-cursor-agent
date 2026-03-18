@@ -27,6 +27,8 @@ export class CursorAcpClient {
   #pm;
   #config;
   #log;
+  /** @type {Map<string, SessionHandle>} */
+  #sessions = new Map();
 
   /**
    * @param {import('./config.js').ResolvedConfig} [config]
@@ -92,7 +94,29 @@ export class CursorAcpClient {
     }
 
     entry.lastActivity = Date.now();
-    return { sessionKey, sessionId };
+    const handle = { sessionKey, sessionId };
+    this.#sessions.set(sessionKey, handle);
+    return handle;
+  }
+
+  /**
+   * Return an existing session handle, or create a new one if none exists.
+   * This is the primary method for multi-turn conversation support.
+   * @param {string} sessionKey
+   * @param {{ cwd?: string, mode?: string }} [opts]
+   * @returns {Promise<SessionHandle>}
+   */
+  async getOrCreateSession(sessionKey, opts = {}) {
+    const cached = this.#sessions.get(sessionKey);
+    if (cached) {
+      const entry = this.#pm.get(sessionKey);
+      if (entry && !entry.transport.closed) {
+        entry.lastActivity = Date.now();
+        return cached;
+      }
+      this.#sessions.delete(sessionKey);
+    }
+    return this.createSession(sessionKey, opts);
   }
 
   /**
@@ -170,6 +194,7 @@ export class CursorAcpClient {
     };
     if (opts.signal) {
       if (opts.signal.aborted) {
+        entry.transport.offNotification('session/update', updateHandler);
         await this.cancel(handle).catch(() => {});
         return;
       }
@@ -200,6 +225,8 @@ export class CursorAcpClient {
         await new Promise((r) => { queueResolve = r; });
       }
     }
+
+    entry.transport.offNotification('session/update', updateHandler);
 
     if (opts.signal) {
       opts.signal.removeEventListener('abort', abortHandler);
@@ -243,6 +270,7 @@ export class CursorAcpClient {
    * @param {string} sessionKey
    */
   close(sessionKey) {
+    this.#sessions.delete(sessionKey);
     this.#pm.kill(sessionKey);
   }
 
@@ -250,8 +278,10 @@ export class CursorAcpClient {
   listSessions() {
     const result = [];
     for (const [key, entry] of this.#pm.list()) {
+      const cached = this.#sessions.get(key);
       result.push({
         sessionKey: key,
+        sessionId: cached?.sessionId ?? null,
         alive: !entry.transport.closed,
         lastActivity: entry.lastActivity,
         initialized: entry.initialized,
@@ -286,6 +316,7 @@ export class CursorAcpClient {
 
   /** Kill all processes. */
   shutdown() {
+    this.#sessions.clear();
     this.#pm.killAll();
   }
 }

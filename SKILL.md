@@ -11,7 +11,8 @@ Cursor CLI (`agent acp`) ACP 运行时封装。管理长驻 Cursor agent 进程�
 ### 1. 独立 CLI
 
 ```bash
-node cli/cli.js prompt "解释这段代码" --cwd /path/to/project
+node cli/cli.js chat --mode plan --cwd /path/to/project    # 交互式多轮对话
+node cli/cli.js prompt "解释这段代码" --cwd /path/to/project  # 单次 prompt
 node cli/cli.js sessions
 node cli/cli.js doctor
 ```
@@ -59,6 +60,7 @@ openclaw config set acp.backend cursor
 | `CURSOR_API_KEY` | API Key | — |
 | `CURSOR_AUTH_TOKEN` | Auth Token | — |
 | `CURSOR_ENDPOINT` | API Endpoint | — |
+| `CURSOR_MODEL` | 模型（`agent --list-models` 查看） | `composer-1.5` |
 | `CURSOR_DEFAULT_MODE` | 默认模式 | `agent` |
 | `CURSOR_PERMISSION_MODE` | 权限策略 | `approve-all` |
 | `CURSOR_IDLE_TTL_MINUTES` | 空闲回收（分钟） | `30` |

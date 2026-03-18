@@ -7,6 +7,7 @@
  *   node cli/cli.js <command> [options]
  *
  * Commands:
+ *   chat                Interactive multi-turn conversation (REPL)
  *   prompt <text>       Send a prompt to Cursor agent
  *   sessions            List active sessions
  *   session-new         Create a new session
@@ -20,6 +21,7 @@
  */
 
 import 'dotenv/config';
+import { createInterface } from 'node:readline';
 import { toJson, toStderr } from './lib/formatters.js';
 import { resolveConfig } from '../core/config.js';
 import { CursorAcpClient } from '../core/acp-client.js';
@@ -100,23 +102,10 @@ async function cmdPrompt(positional, flags) {
 
   const client = getClient(flags);
   const sessionKey = flags.session || `cli-${Date.now()}`;
-
-  // Ensure session exists
-  let handle;
-  const existing = client.listSessions().find((s) => s.sessionKey === sessionKey);
-  if (existing) {
-    // Reuse — we need the sessionId, but the simple list doesn't have it.
-    // For now, create a new session on the same key (process is reused).
-    handle = await client.createSession(sessionKey, {
-      cwd: flags.cwd,
-      mode: flags.mode,
-    });
-  } else {
-    handle = await client.createSession(sessionKey, {
-      cwd: flags.cwd,
-      mode: flags.mode,
-    });
-  }
+  const handle = await client.getOrCreateSession(sessionKey, {
+    cwd: flags.cwd,
+    mode: flags.mode,
+  });
 
   const jsonMode = !!flags.json;
   const events = [];
@@ -144,7 +133,9 @@ async function cmdPrompt(positional, flags) {
     toJson(events);
   }
 
-  client.shutdown();
+  if (!flags.session) {
+    client.shutdown();
+  }
 }
 
 async function cmdCancel(flags) {
@@ -185,6 +176,149 @@ async function cmdSetMode(positional, flags) {
   toJson({ status: 'mode-set', mode, sessionKey });
 }
 
+// ── Stream helper ────────────────────────────────────────────────────
+
+function streamToConsole(eventIter) {
+  return (async () => {
+    for await (const event of eventIter) {
+      if (event.type === 'text_delta') {
+        process.stdout.write(event.text);
+      } else if (event.type === 'tool_call') {
+        toStderr(`\n[tool] ${event.title ?? event.text} (${event.status ?? ''})`);
+      } else if (event.type === 'status') {
+        toStderr(`[status] ${event.text}`);
+      } else if (event.type === 'done') {
+        process.stdout.write('\n');
+      } else if (event.type === 'error') {
+        toStderr(`[error] ${event.message}`);
+      }
+    }
+  })();
+}
+
+// ── Chat REPL ────────────────────────────────────────────────────────
+
+async function cmdChat(flags) {
+  const client = getClient(flags);
+  const sessionKey = flags.session || `chat-${Date.now()}`;
+  const handle = await client.createSession(sessionKey, {
+    cwd: flags.cwd,
+    mode: flags.mode,
+  });
+
+  toStderr(`[chat] session started (key=${handle.sessionKey}, id=${handle.sessionId})`);
+  toStderr('[chat] Type your message. Commands: /quit /mode <m> /new /info');
+
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stderr,
+    prompt: '> ',
+    terminal: process.stdin.isTTY ?? false,
+  });
+
+  let currentHandle = handle;
+  let prompting = false;
+  let exiting = false;
+
+  function safePrompt() {
+    if (!exiting) try { rl.prompt(); } catch { /* readline closed */ }
+  }
+
+  rl.prompt();
+
+  rl.on('line', async (line) => {
+    const input = line.trim();
+    if (!input) { safePrompt(); return; }
+
+    // Slash commands
+    if (input.startsWith('/')) {
+      const [cmd, ...rest] = input.slice(1).split(/\s+/);
+      switch (cmd) {
+        case 'quit':
+        case 'exit':
+          exiting = true;
+          toStderr('[chat] closing session...');
+          client.close(currentHandle.sessionKey);
+          client.shutdown();
+          rl.close();
+          return;
+
+        case 'mode': {
+          const mode = rest[0];
+          if (!mode || !['agent', 'plan', 'ask'].includes(mode)) {
+            toStderr('[chat] usage: /mode <agent|plan|ask>');
+            safePrompt();
+            return;
+          }
+          try {
+            await client.setMode(currentHandle, mode);
+            toStderr(`[chat] mode switched to "${mode}"`);
+          } catch (err) {
+            toStderr(`[chat] set_mode failed: ${err.message}`);
+          }
+          safePrompt();
+          return;
+        }
+
+        case 'new':
+          toStderr('[chat] creating new session (context reset)...');
+          client.close(currentHandle.sessionKey);
+          currentHandle = await client.createSession(`chat-${Date.now()}`, {
+            cwd: flags.cwd,
+            mode: flags.mode,
+          });
+          toStderr(`[chat] new session (key=${currentHandle.sessionKey}, id=${currentHandle.sessionId})`);
+          safePrompt();
+          return;
+
+        case 'info':
+          toStderr(`[chat] sessionKey=${currentHandle.sessionKey} sessionId=${currentHandle.sessionId}`);
+          safePrompt();
+          return;
+
+        default:
+          toStderr(`[chat] unknown command: /${cmd}`);
+          safePrompt();
+          return;
+      }
+    }
+
+    // Regular prompt
+    prompting = true;
+    try {
+      await streamToConsole(client.prompt(currentHandle, input));
+    } catch (err) {
+      toStderr(`[error] ${err.message}`);
+    }
+    prompting = false;
+    safePrompt();
+  });
+
+  rl.on('SIGINT', () => {
+    if (prompting) {
+      toStderr('\n[chat] cancelling current turn...');
+      client.cancel(currentHandle).catch(() => {});
+    } else {
+      toStderr('\n[chat] Press Ctrl+C again or type /quit to exit.');
+      rl.once('SIGINT', () => {
+        exiting = true;
+        toStderr('[chat] exiting...');
+        client.close(currentHandle.sessionKey);
+        client.shutdown();
+        process.exit(0);
+      });
+    }
+    safePrompt();
+  });
+
+  rl.on('close', () => {
+    client.shutdown();
+  });
+
+  // Keep the process alive until readline closes
+  await new Promise((resolve) => rl.on('close', resolve));
+}
+
 // ── Usage ────────────────────────────────────────────────────────────
 
 function printUsage() {
@@ -194,7 +328,11 @@ Usage:
   node cli/cli.js <command> [options]
 
 Commands:
-  prompt <text>         Send a prompt to Cursor agent
+  chat                  Interactive multi-turn conversation (REPL)
+    --session <key>       Session key (default: auto-generated)
+    --mode <mode>         Session mode: agent / plan / ask
+    --cwd <dir>           Working directory
+  prompt <text>         Send a single prompt to Cursor agent
     --session <key>       Session key (default: auto-generated)
     --mode <mode>         Session mode: agent / plan / ask
     --cwd <dir>           Working directory
@@ -223,6 +361,7 @@ Examples:
   node cli/cli.js prompt "Explain the auth module" --cwd /path/to/project
   node cli/cli.js prompt "Fix failing tests" --session my-session --mode agent
   node cli/cli.js prompt "Hello" --model gemini-3-flash
+  node cli/cli.js chat --mode plan --cwd /path/to/project
   node cli/cli.js sessions
   node cli/cli.js close --session my-session`);
 }
@@ -234,6 +373,7 @@ async function main() {
 
   try {
     switch (command) {
+      case 'chat':        await cmdChat(flags); break;
       case 'doctor':      await cmdDoctor(flags); break;
       case 'prompt':      await cmdPrompt(positional, flags); break;
       case 'session-new': await cmdSessionNew(flags); break;

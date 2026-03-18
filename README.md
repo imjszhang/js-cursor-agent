@@ -59,14 +59,14 @@ cp .env.example .env
 # 诊断 Cursor CLI 状态
 node cli/cli.js doctor
 
-# 发送 prompt
+# 交互式多轮对话
+node cli/cli.js chat --mode plan --cwd /path/to/project
+
+# 发送单次 prompt
 node cli/cli.js prompt "Explain the auth module" --cwd /path/to/project
 
 # 查看活跃会话
 node cli/cli.js sessions
-
-# 切换模式
-node cli/cli.js set-mode plan --session my-session
 ```
 
 ---
@@ -74,7 +74,8 @@ node cli/cli.js set-mode plan --session my-session
 ## 独立 CLI 命令
 
 ```bash
-node cli/cli.js prompt <text>       # 发送 prompt [--session] [--mode] [--cwd] [--json]
+node cli/cli.js chat                # 交互式多轮对话 [--session] [--mode] [--cwd] [--model]
+node cli/cli.js prompt <text>       # 发送单次 prompt [--session] [--mode] [--cwd] [--json] [--model]
 node cli/cli.js sessions            # 列出活跃会话
 node cli/cli.js session-new         # 创建新会话 [--cwd] [--mode]
 node cli/cli.js cancel              # 取消当前 turn [--session]
@@ -83,6 +84,20 @@ node cli/cli.js set-mode <mode>     # 切换模式 (agent/plan/ask) [--session]
 node cli/cli.js doctor              # 诊断 Cursor CLI 状态
 node cli/cli.js help                # 帮助信息
 ```
+
+### chat 交互式对话
+
+`chat` 命令启动 REPL，在同一会话中进行多轮对话，保持上下文连续：
+
+```bash
+node cli/cli.js chat --session my-task --mode plan --cwd /path/to/project
+```
+
+支持的 REPL 命令：
+- `/mode <agent|plan|ask>` — 切换模式
+- `/new` — 重置上下文，创建新会话
+- `/info` — 显示当前会话信息
+- `/quit` 或 `/exit` — 退出
 
 ---
 
@@ -126,6 +141,7 @@ openclaw config set acp.backend cursor
 | `CURSOR_API_KEY` | Cursor API Key | — |
 | `CURSOR_AUTH_TOKEN` | Cursor Auth Token | — |
 | `CURSOR_ENDPOINT` | Cursor API Endpoint | — |
+| `CURSOR_MODEL` | 使用的模型（`agent --list-models` 查看可选） | `composer-1.5` |
 | `CURSOR_DEFAULT_MODE` | 默认会话模式 | `agent` |
 | `CURSOR_PERMISSION_MODE` | 权限审批策略 | `approve-all` |
 | `CURSOR_IDLE_TTL_MINUTES` | 空闲进程回收时间（分钟） | `30` |

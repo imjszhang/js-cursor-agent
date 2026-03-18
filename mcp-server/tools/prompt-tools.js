@@ -22,7 +22,7 @@ export function registerPromptTools(server, client) {
     },
     async ({ text, session, cwd, mode }) => {
       const sessionKey = session || `mcp-${Date.now()}`;
-      const handle = await client.createSession(sessionKey, { cwd, mode });
+      const handle = await client.getOrCreateSession(sessionKey, { cwd, mode });
 
       const chunks = [];
       const toolCalls = [];
