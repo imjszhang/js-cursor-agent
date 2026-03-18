@@ -59,6 +59,7 @@ function getClient(flags = {}) {
   const overrides = {};
   if (flags['api-key']) overrides.apiKey = flags['api-key'];
   if (flags['auth-token']) overrides.authToken = flags['auth-token'];
+  if (flags.model) overrides.model = flags.model;
   const config = resolveConfig(overrides);
   _client = new CursorAcpClient(config, {
     log: (msg) => toStderr(msg),
@@ -215,11 +216,13 @@ Commands:
 Auth flags (optional):
   --api-key <key>       Cursor API key
   --auth-token <token>  Cursor auth token
+  --model <id>          Model to use (e.g. sonnet-4.6, gemini-3-flash)
 
 Examples:
   node cli/cli.js doctor
   node cli/cli.js prompt "Explain the auth module" --cwd /path/to/project
   node cli/cli.js prompt "Fix failing tests" --session my-session --mode agent
+  node cli/cli.js prompt "Hello" --model gemini-3-flash
   node cli/cli.js sessions
   node cli/cli.js close --session my-session`);
 }

@@ -19,6 +19,10 @@ export function resolveAuthArgs(config) {
     args.push('-e', config.endpoint);
   }
 
+  if (config.model) {
+    args.push('--model', config.model);
+  }
+
   if (config.apiKey) {
     args.push('--api-key', config.apiKey);
     return args;
@@ -60,7 +64,13 @@ function spawnAndCollect(command, args) {
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let cmd = command;
+    let cmdArgs = args;
+    if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(command)) {
+      cmd = 'cmd';
+      cmdArgs = ['/c', command, ...args];
+    }
+    const child = spawn(cmd, cmdArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (chunk) => { stdout += String(chunk); });
     child.stderr.on('data', (chunk) => { stderr += String(chunk); });
     child.on('error', reject);

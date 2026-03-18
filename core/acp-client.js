@@ -269,6 +269,9 @@ export class CursorAcpClient {
     const auth = await checkAuthStatus(this.#config);
     details.push(auth.message);
     details.push(`Command: ${this.#config.command}`);
+    if (this.#config.model) {
+      details.push(`Model: ${this.#config.model}`);
+    }
     details.push(`Default mode: ${this.#config.defaultMode}`);
     details.push(`Permission mode: ${this.#config.permissionMode}`);
     details.push(`Max sessions: ${this.#config.maxSessions}`);

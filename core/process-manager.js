@@ -126,11 +126,19 @@ export class ProcessManager {
 
     this.#log(`[process-manager] spawning: ${this.#config.command} ${args.join(' ')}`);
 
-    const child = spawn(this.#config.command, args, {
+    const spawnOpts = {
       stdio: ['pipe', 'pipe', 'inherit'],
       cwd,
       env: { ...process.env },
-    });
+    };
+    let cmd = this.#config.command;
+    let cmdArgs = args;
+    // Windows: .cmd/.bat must run via cmd.exe
+    if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(cmd)) {
+      cmd = 'cmd';
+      cmdArgs = ['/c', this.#config.command, ...args];
+    }
+    const child = spawn(cmd, cmdArgs, spawnOpts);
 
     child.stdin.on('error', () => {
       // Ignore EPIPE if child exits before stdin flush

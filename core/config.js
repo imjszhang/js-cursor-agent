@@ -8,6 +8,7 @@ const DEFAULTS = {
   apiKey: '',
   authToken: '',
   endpoint: '',
+  model: 'composer-1.5',
   defaultMode: 'agent',
   permissionMode: 'approve-all',
   idleTtlMinutes: 30,
@@ -55,6 +56,11 @@ export function resolveConfig(overrides = {}) {
     DEFAULTS.endpoint,
   );
 
+  const model = trimOrDefault(
+    overrides.model ?? env.CURSOR_MODEL,
+    DEFAULTS.model,
+  );
+
   let defaultMode = trimOrDefault(
     overrides.defaultMode ?? env.CURSOR_DEFAULT_MODE,
     DEFAULTS.defaultMode,
@@ -86,6 +92,7 @@ export function resolveConfig(overrides = {}) {
     apiKey,
     authToken,
     endpoint,
+    model,
     defaultMode,
     permissionMode,
     idleTtlMinutes,
@@ -99,6 +106,7 @@ export function resolveConfig(overrides = {}) {
  * @property {string} apiKey
  * @property {string} authToken
  * @property {string} endpoint
+ * @property {string} model
  * @property {string} defaultMode
  * @property {string} permissionMode
  * @property {number} idleTtlMinutes
