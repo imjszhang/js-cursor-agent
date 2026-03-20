@@ -214,14 +214,12 @@ const plugin = {
       id: 'cursor-runtime',
 
       async start(ctx) {
-        const { registerAcpRuntimeBackend } = await import('openclaw/plugin-sdk/acpx');
-
         const logger = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {} };
         runtime = new CursorRuntime(config, {
           log: (msg) => logger.info(msg),
         });
 
-        registerAcpRuntimeBackend({
+        api.registerAcpRuntimeBackend({
           id: BACKEND_ID,
           runtime,
           healthy: () => runtime?.isHealthy() ?? false,
@@ -243,9 +241,8 @@ const plugin = {
 
       async stop() {
         try {
-          const { unregisterAcpRuntimeBackend } = await import('openclaw/plugin-sdk/acpx');
-          unregisterAcpRuntimeBackend(BACKEND_ID);
-        } catch { /* ignore if sdk unavailable */ }
+          api.unregisterAcpRuntimeBackend(BACKEND_ID);
+        } catch { /* ignore if unavailable */ }
         if (runtime) {
           runtime.shutdown();
           runtime = null;
