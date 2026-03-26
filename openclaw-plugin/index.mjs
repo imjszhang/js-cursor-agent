@@ -7,6 +7,7 @@
 
 import { resolveConfig } from '../core/config.js';
 import { CursorAcpClient } from '../core/acp-client.js';
+import { registerAcpRuntimeBackend, unregisterAcpRuntimeBackend } from 'openclaw/plugin-sdk/acp-runtime';
 
 const BACKEND_ID = 'cursor';
 
@@ -219,7 +220,7 @@ const plugin = {
           log: (msg) => logger.info(msg),
         });
 
-        api.registerAcpRuntimeBackend({
+        registerAcpRuntimeBackend({
           id: BACKEND_ID,
           runtime,
           healthy: () => runtime?.isHealthy() ?? false,
@@ -241,7 +242,7 @@ const plugin = {
 
       async stop() {
         try {
-          api.unregisterAcpRuntimeBackend(BACKEND_ID);
+          unregisterAcpRuntimeBackend(BACKEND_ID);
         } catch { /* ignore if unavailable */ }
         if (runtime) {
           runtime.shutdown();
