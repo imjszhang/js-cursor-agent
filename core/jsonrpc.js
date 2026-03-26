@@ -7,7 +7,7 @@
 
 import { createInterface } from 'node:readline';
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 86_400_000; // 24 hours
 
 export class JsonRpcTransport {
   #child;
