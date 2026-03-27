@@ -52,12 +52,12 @@ export class ProcessManager {
       return existing;
     }
 
-    if (this.#pool.size >= this.#config.maxSessions) {
-      // Evict the oldest idle process
+    const limit = this.#config.maxSessions;
+    if (limit > 0 && this.#pool.size >= limit) {
       this.#evictOldest();
-      if (this.#pool.size >= this.#config.maxSessions) {
+      if (this.#pool.size >= limit) {
         throw new Error(
-          `Max concurrent Cursor agent sessions (${this.#config.maxSessions}) reached. Close a session first.`,
+          `Max concurrent Cursor agent sessions (${limit}) reached. Close a session first.`,
         );
       }
     }
@@ -194,7 +194,10 @@ export class ProcessManager {
   }
 
   #startReaper() {
-    const intervalMs = 60_000; // check every minute
+    // idleTtlMinutes <= 0 means no automatic reaping (Gateway manages lifecycle)
+    if (this.#config.idleTtlMinutes <= 0) return;
+
+    const intervalMs = 60_000;
     this.#reapTimer = setInterval(() => {
       const ttlMs = this.#config.idleTtlMinutes * 60_000;
       const now = Date.now();
@@ -209,7 +212,6 @@ export class ProcessManager {
         }
       }
     }, intervalMs);
-    // Don't keep the Node process alive just for the reaper
     if (this.#reapTimer.unref) this.#reapTimer.unref();
   }
 }

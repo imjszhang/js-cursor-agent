@@ -194,16 +194,19 @@ const plugin = {
   register(api) {
     const pluginCfg = api.pluginConfig ?? {};
 
-    // Map plugin config keys to core config env-var equivalents
-    const overrides = {};
+    // Map plugin config keys to core config env-var equivalents.
+    // Running inside OpenClaw Gateway: disable plugin-side concurrency cap
+    // and idle reaper — Gateway's ACP runtime manages session lifecycle.
+    const overrides = {
+      maxSessions: 0,
+      idleTtlMinutes: 0,
+    };
     if (pluginCfg.command) overrides.command = pluginCfg.command;
     if (pluginCfg.apiKey) overrides.apiKey = pluginCfg.apiKey;
     if (pluginCfg.authToken) overrides.authToken = pluginCfg.authToken;
     if (pluginCfg.endpoint) overrides.endpoint = pluginCfg.endpoint;
     if (pluginCfg.defaultMode) overrides.defaultMode = pluginCfg.defaultMode;
     if (pluginCfg.permissionMode) overrides.permissionMode = pluginCfg.permissionMode;
-    if (pluginCfg.idleTtlMinutes) overrides.idleTtlMinutes = pluginCfg.idleTtlMinutes;
-    if (pluginCfg.maxConcurrentSessions) overrides.maxSessions = pluginCfg.maxConcurrentSessions;
 
     const config = resolveConfig(overrides);
 
@@ -216,6 +219,21 @@ const plugin = {
 
       async start(ctx) {
         const logger = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {} };
+
+        // Check ACP configuration and warn if missing
+        const gatewayConfig = ctx.config ?? {};
+        const acpCfg = gatewayConfig.acp;
+        if (!acpCfg?.enabled) {
+          logger.warn(
+            'ACP runtime is not enabled. Run "openclaw cursor setup" to auto-configure, or set acp.enabled=true and acp.backend=cursor manually.',
+          );
+        } else if (acpCfg.backend && acpCfg.backend !== BACKEND_ID) {
+          logger.warn(
+            `ACP backend is set to "${acpCfg.backend}", not "${BACKEND_ID}". This plugin registers backend "${BACKEND_ID}". ` +
+            `To use Cursor, set acp.backend=${BACKEND_ID} or run "openclaw cursor setup".`,
+          );
+        }
+
         runtime = new CursorRuntime(config, {
           log: (msg) => logger.info(msg),
         });
@@ -233,7 +251,7 @@ const plugin = {
           if (runtime?.isHealthy()) {
             logger.info('cursor runtime backend ready');
           } else {
-            logger.warn('cursor runtime backend probe failed');
+            logger.warn('cursor runtime backend probe failed — run "openclaw cursor doctor" to diagnose');
           }
         }).catch((err) => {
           logger.warn(`cursor runtime probe error: ${err.message}`);
@@ -255,6 +273,59 @@ const plugin = {
 
     api.registerCli(({ program }) => {
       const cursor = program.command('cursor').description('JS Cursor Agent');
+
+      cursor
+        .command('setup')
+        .description('Auto-configure ACP runtime for Cursor backend')
+        .option('--dry-run', 'Print commands without executing')
+        .action(async (opts) => {
+          const { execSync } = await import('node:child_process');
+          const dryRun = !!opts.dryRun;
+
+          const configPairs = [
+            ['acp.enabled', 'true'],
+            ['acp.backend', BACKEND_ID],
+            ['acp.defaultAgent', BACKEND_ID],
+            ['acp.maxConcurrentSessions', String(config.maxSessions)],
+            ['acp.runtime.ttlMinutes', String(config.idleTtlMinutes)],
+          ];
+
+          console.log(dryRun ? '=== Dry run ===' : '=== Configuring ACP for Cursor backend ===');
+          console.log();
+
+          for (const [key, value] of configPairs) {
+            const cmd = `openclaw config set ${key} ${value}`;
+            if (dryRun) {
+              console.log(`  ${cmd}`);
+            } else {
+              try {
+                execSync(cmd, { stdio: 'pipe' });
+                console.log(`  ✓ ${key} = ${value}`);
+              } catch (err) {
+                console.error(`  ✗ ${key}: ${err.message}`);
+              }
+            }
+          }
+
+          // allowedAgents is an array — needs JSON value
+          const allowedCmd = `openclaw config set acp.allowedAgents '["${BACKEND_ID}"]'`;
+          if (dryRun) {
+            console.log(`  ${allowedCmd}`);
+          } else {
+            try {
+              execSync(allowedCmd, { stdio: 'pipe' });
+              console.log(`  ✓ acp.allowedAgents = ["${BACKEND_ID}"]`);
+            } catch (err) {
+              console.error(`  ✗ acp.allowedAgents: ${err.message}`);
+            }
+          }
+
+          console.log();
+          if (!dryRun) {
+            console.log('ACP configuration complete. Restart the gateway to apply.');
+            console.log('Then verify with: openclaw cursor doctor');
+          }
+        });
 
       cursor
         .command('doctor')

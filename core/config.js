@@ -25,7 +25,7 @@ function trimOrDefault(value, fallback) {
 
 function intOrDefault(value, fallback) {
   const parsed = parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 /**
