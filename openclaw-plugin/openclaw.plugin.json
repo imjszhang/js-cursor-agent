@@ -18,6 +18,9 @@
       "endpoint": {
         "type": "string"
       },
+      "model": {
+        "type": "string"
+      },
       "defaultMode": {
         "type": "string",
         "enum": ["agent", "plan", "ask"]
@@ -44,6 +47,10 @@
     "endpoint": {
       "label": "Endpoint",
       "help": "Custom Cursor API endpoint URL. Alternatively set CURSOR_ENDPOINT env var."
+    },
+    "model": {
+      "label": "Cursor model",
+      "help": "Model id passed to `agent acp` as --model (for example composer-1.5). Overrides CURSOR_MODEL when set. Env: CURSOR_MODEL."
     },
     "defaultMode": {
       "label": "Default Session Mode",

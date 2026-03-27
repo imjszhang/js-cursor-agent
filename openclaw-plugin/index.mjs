@@ -205,6 +205,7 @@ const plugin = {
     if (pluginCfg.apiKey) overrides.apiKey = pluginCfg.apiKey;
     if (pluginCfg.authToken) overrides.authToken = pluginCfg.authToken;
     if (pluginCfg.endpoint) overrides.endpoint = pluginCfg.endpoint;
+    if (pluginCfg.model) overrides.model = pluginCfg.model;
     if (pluginCfg.defaultMode) overrides.defaultMode = pluginCfg.defaultMode;
     if (pluginCfg.permissionMode) overrides.permissionMode = pluginCfg.permissionMode;
 
