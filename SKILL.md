@@ -1,3 +1,19 @@
+---
+name: js-cursor-agent
+description: "Cursor CLI ACP runtime wrapper — session pool, auto-approval, idle recycling. Standalone CLI, MCP Server, and OpenClaw plugin."
+version: 1.0.0
+metadata:
+  openclaw:
+    emoji: "\U0001F916"
+    os:
+      - windows
+      - macos
+      - linux
+    requires:
+      bins:
+        - node
+---
+
 # js-cursor-agent
 
 Cursor CLI (`agent acp`) ACP 运行时封装。管理长驻 Cursor agent 进程，提供会话池、权限自动审批、空闲回收。
