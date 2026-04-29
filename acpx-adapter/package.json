@@ -1,0 +1,15 @@
+{
+  "name": "cursor-adapter",
+  "version": "1.0.0",
+  "description": "ACPX adapter for Cursor CLI — bridges acpx to Cursor's `agent acp` JSON-RPC protocol",
+  "type": "module",
+  "main": "cursor-adapter.js",
+  "bin": {
+    "cursor-adapter": "./cursor-adapter.js"
+  },
+  "scripts": {
+    "test": "node cursor-adapter.js --help"
+  },
+  "keywords": ["cursor", "acpx", "openclaw", "agent"],
+  "license": "MIT"
+}
